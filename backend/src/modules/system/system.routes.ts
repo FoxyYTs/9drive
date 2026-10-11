@@ -1,4 +1,5 @@
-import { Router } from 'express'
+import { Router, type Request } from 'express'
+import { env } from '../../config/env.js'
 import { requireAdmin, requireAuth } from '../../middleware/auth.middleware.js'
 import { prisma } from '../../config/prisma.js'
 import { decryptText, encryptText } from '../../utils/crypto.js'
@@ -10,6 +11,12 @@ export const systemRouter = Router()
 // Update with `git pull` + rebuild on the host and back up with `mysqldump`.
 systemRouter.use(requireAuth, requireAdmin)
 
+// Behind a reverse proxy the request host/protocol miss the public scheme and the /api prefix,
+// which produced a redirect_uri_mismatch from Google, so prefer the configured public URI.
+function defaultRedirectUri(req: Request) {
+  return env.GOOGLE_REDIRECT_URI || `${req.protocol}://${req.get('host')}/connected-accounts/google/callback`
+}
+
 systemRouter.get('/google-config', async (req, res, next) => {
   try {
     const config = await prisma.providerConfig.findFirst({
@@ -17,7 +24,7 @@ systemRouter.get('/google-config', async (req, res, next) => {
       orderBy: { createdAt: 'desc' }
     })
 
-    const defaultRedirect = `${req.protocol}://${req.get('host')}/connected-accounts/google/callback`
+    const defaultRedirect = defaultRedirectUri(req)
 
     if (!config) {
       return res.json({
@@ -53,7 +60,7 @@ systemRouter.post('/google-config', async (req, res, next) => {
       return res.status(400).json({ code: 'BAD_REQUEST', message: 'Client ID is required.' })
     }
 
-    const defaultRedirect = `${req.protocol}://${req.get('host')}/connected-accounts/google/callback`
+    const defaultRedirect = defaultRedirectUri(req)
     const finalRedirectUri = redirectUri || defaultRedirect
 
     const scopes = [
