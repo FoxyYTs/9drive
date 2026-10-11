@@ -24,6 +24,8 @@ if [ ! -f "$backend_dir/.env" ]; then
   printf "MySQL DATABASE_URL [mysql://root@localhost:3306/9drive]: "
   IFS= read -r database_url
   database_url=${database_url:-mysql://root@localhost:3306/9drive}
+  printf "Admin email (only this email can register at first): "
+  IFS= read -r admin_email
 
   {
     printf 'DATABASE_URL="%s"\n' "$database_url"
@@ -35,6 +37,8 @@ if [ ! -f "$backend_dir/.env" ]; then
     printf 'REFRESH_TOKEN_TTL_DAYS=30\n'
     printf 'MAX_UPLOAD_BYTES=5368709120\n'
     printf 'RECAPTCHA_SECRET_KEY=""\n'
+    printf 'ADMIN_EMAILS="%s"\n' "$admin_email"
+    printf 'ALLOWED_EMAILS=""\n'
     printf 'GOOGLE_CLIENT_ID=""\n'
     printf 'GOOGLE_CLIENT_SECRET=""\n'
     printf 'GOOGLE_REDIRECT_URI="http://localhost:4000/connected-accounts/google/callback"\n'

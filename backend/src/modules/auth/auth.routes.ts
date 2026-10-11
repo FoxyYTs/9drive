@@ -7,6 +7,7 @@ import { requireAuth, type AuthRequest } from '../../middleware/auth.middleware.
 import { hashPassword, verifyPassword } from '../../utils/password.js'
 import { encryptText, hashToken, randomToken } from '../../utils/crypto.js'
 import { signAccessToken } from '../../utils/jwt.js'
+import { canRegisterEmail, isAdminEmail } from '../../utils/access.js'
 import { createOAuthClient, syncGoogleQuota } from '../google/google.service.js'
 
 export const authRouter = Router()
@@ -43,6 +44,7 @@ async function verifyCaptcha(token: string | undefined) {
 authRouter.post('/register', async (req, res, next) => {
   try {
     const body = registerSchema.parse(req.body)
+    if (!canRegisterEmail(body.email)) return res.status(403).json({ code: 'AUTH_REGISTRATION_CLOSED', message: 'Registration is restricted on this server.' })
     if (!(await verifyCaptcha(body.captchaToken))) return res.status(400).json({ code: 'CAPTCHA_FAILED', message: 'Captcha verification failed.' })
     const existing = await prisma.user.findUnique({ where: { email: body.email } })
     if (existing) return res.status(409).json({ code: 'AUTH_EMAIL_TAKEN', message: 'Email already registered.' })
@@ -104,6 +106,8 @@ authRouter.get('/google/callback', async (req, res) => {
     if (!providerAccountId || !email) return res.redirect(`${env.FRONTEND_URL}/google-auth?status=error`)
 
     const name = profile.data.name || email.split('@')[0] || 'Google User'
+    const knownUser = await prisma.user.findUnique({ where: { email } })
+    if (!knownUser && !canRegisterEmail(email)) return res.redirect(`${env.FRONTEND_URL}/google-auth?status=error`)
     const user = await prisma.user.upsert({
       where: { email },
       create: { email, name, passwordHash: await hashPassword(randomToken(32)) },
@@ -190,7 +194,7 @@ authRouter.post('/logout', requireAuth, async (req: AuthRequest, res, next) => {
 authRouter.get('/me', requireAuth, async (req: AuthRequest, res, next) => {
   try {
     const user = await prisma.user.findUniqueOrThrow({ where: { id: req.user!.id }, select: { id: true, name: true, email: true, status: true } })
-    return res.json({ user })
+    return res.json({ user: { ...user, isAdmin: isAdminEmail(user.email) } })
   } catch (error) {
     return next(error)
   }

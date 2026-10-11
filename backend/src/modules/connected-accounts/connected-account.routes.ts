@@ -6,6 +6,7 @@ import { prisma } from '../../config/prisma.js'
 import { requireAuth, type AuthRequest } from '../../middleware/auth.middleware.js'
 import { decryptText, encryptText, hashToken, randomToken } from '../../utils/crypto.js'
 import { hashPassword } from '../../utils/password.js'
+import { canRegisterEmail } from '../../utils/access.js'
 import { createOAuthClient, syncGoogleQuota } from '../google/google.service.js'
 import { syncS3Quota, testS3Connection } from '../s3/s3.service.js'
 
@@ -192,6 +193,8 @@ connectedAccountRouter.get('/google/callback', async (req, res, next) => {
 
     if (oauthState.flow === 'login') {
       const name = profile.data.name || email.split('@')[0] || 'Google User'
+      const knownUser = await prisma.user.findUnique({ where: { email } })
+      if (!knownUser && !canRegisterEmail(email)) return res.redirect(`${env.FRONTEND_URL}/google-auth?status=error`)
       const user = await prisma.user.upsert({
         where: { email },
         create: { email, name, passwordHash: await hashPassword(randomToken(32)) },

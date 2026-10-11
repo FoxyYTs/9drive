@@ -10,6 +10,16 @@ Copyright 2026 Zenhosta
 
 Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE) for details.
 
+## Security changes in this fork
+
+This fork hardens upstream 9Drive for self-hosting:
+
+- **No more public-writer Drive files.** Upstream gave every uploaded file (and every file whose link was copied) an `anyone / writer` permission, so anyone with the link could modify it. Files now stay private; the explicit "Make Public" button grants read-only access.
+- **Admin role and closed registration.** `ADMIN_EMAILS` and `ALLOWED_EMAILS` (comma-separated) control who can create an account, by email/password or Google. Everyone else is rejected. Only admins can read or change the global Google OAuth config.
+- **Removed remote update and backup/restore endpoints.** Any logged-in user could run `git pull`/`update.sh` on the server or overwrite the database, and backup/restore only handled SQLite files while the app uses MySQL. Update with `git pull` and a rebuild, and back up with `mysqldump`.
+- **Uploads are streamed.** `POST /uploads` no longer buffers the whole file in memory before sending it to Drive or S3. An upload whose size doesn't match the declared size is deleted from the provider.
+- **No default secrets in Docker.** `docker compose` refuses to start without `JWT_ACCESS_SECRET` and `TOKEN_ENCRYPTION_KEY`.
+
 ## Features
 
 - Google Drive and S3-compatible storage gateway in one virtual storage dashboard.
@@ -30,7 +40,6 @@ Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE) for detai
 - Bottom-right upload progress panel.
 - Bearer token authentication.
 - Global Google OAuth config stored encrypted in DB (can be set via seed command or directly in Settings UI).
-- Automated system updates via `update.sh` directly from the Settings UI (PM2 setup).
 - Optional reCAPTCHA on email/password registration.
 - MySQL database with Prisma migrations.
 - Express + TypeScript backend.

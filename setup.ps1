@@ -31,6 +31,7 @@ if (-not (Test-Path -LiteralPath $backendEnv)) {
     if ([string]::IsNullOrWhiteSpace($databaseUrl)) {
         $databaseUrl = "mysql://root@localhost:3306/9drive"
     }
+    $adminEmail = Read-Host "Admin email (only this email can register at first)"
 
     @(
         "DATABASE_URL=`"$databaseUrl`""
@@ -42,6 +43,8 @@ if (-not (Test-Path -LiteralPath $backendEnv)) {
         "REFRESH_TOKEN_TTL_DAYS=30"
         "MAX_UPLOAD_BYTES=5368709120"
         "RECAPTCHA_SECRET_KEY=`"`""
+        "ADMIN_EMAILS=`"$adminEmail`""
+        "ALLOWED_EMAILS=`"`""
         "GOOGLE_CLIENT_ID=`"`""
         "GOOGLE_CLIENT_SECRET=`"`""
         "GOOGLE_REDIRECT_URI=`"http://localhost:4000/connected-accounts/google/callback`""

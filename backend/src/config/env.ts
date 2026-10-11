@@ -13,6 +13,19 @@ const envSchema = z.object({
   REFRESH_TOKEN_TTL_DAYS: z.coerce.number().default(30),
   MAX_UPLOAD_BYTES: z.coerce.number().default(5 * 1024 * 1024 * 1024),
   RECAPTCHA_SECRET_KEY: z.string().optional(),
+  // Comma-separated emails. Admins manage global settings; only admins and allowed emails can create accounts.
+  ADMIN_EMAILS: z.string().default(''),
+  ALLOWED_EMAILS: z.string().default(''),
 })
 
-export const env = envSchema.parse(process.env)
+const emailList = (value: string) => value.split(',').map((email) => email.trim().toLowerCase()).filter(Boolean)
+
+const parsed = envSchema.parse(process.env)
+
+export const env = {
+  ...parsed,
+  ADMIN_EMAILS: emailList(parsed.ADMIN_EMAILS),
+  ALLOWED_EMAILS: emailList(parsed.ALLOWED_EMAILS),
+}
+
+if (env.ADMIN_EMAILS.length === 0) console.warn('[env] ADMIN_EMAILS is empty: nobody can register or manage global settings.')

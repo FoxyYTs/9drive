@@ -1,6 +1,7 @@
 import type { NextFunction, Request, Response } from 'express'
 import { prisma } from '../config/prisma.js'
 import { verifyAccessToken } from '../utils/jwt.js'
+import { isAdminEmail } from '../utils/access.js'
 
 export type AuthRequest = Request & {
   user?: { id: string; sessionId: string }
@@ -18,4 +19,10 @@ export async function requireAuth(req: AuthRequest, res: Response, next: NextFun
   } catch {
     return res.status(401).json({ code: 'AUTH_INVALID_TOKEN', message: 'Invalid token.' })
   }
+}
+
+export async function requireAdmin(req: AuthRequest, res: Response, next: NextFunction) {
+  const user = await prisma.user.findUnique({ where: { id: req.user!.id }, select: { email: true } })
+  if (!user || !isAdminEmail(user.email)) return res.status(403).json({ code: 'ADMIN_REQUIRED', message: 'Admin access required.' })
+  return next()
 }
